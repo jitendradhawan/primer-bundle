@@ -20,6 +20,8 @@ import javax.ws.rs.core.Response;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 
+import static io.dropwizard.primer.model.PrimerHttpHeaders.*;
+
 /**
  * Created by pavan.kumar on 2019-02-19
  */
@@ -29,11 +31,6 @@ public abstract class AuthFilter implements ContainerRequestFilter {
     protected final AuthType authType;
     protected final PrimerBundleConfiguration configuration;
     protected final ObjectMapper objectMapper;
-
-    private static final String AUTHORIZED_FOR_ID = "X-AUTHORIZED-FOR-ID";
-    private static final String AUTHORIZED_FOR_SUBJECT = "X-AUTHORIZED-FOR-SUBJECT";
-    private static final String AUTHORIZED_FOR_NAME = "X-AUTHORIZED-FOR-NAME";
-    private static final String AUTHORIZED_FOR_ROLE = "X-AUTHORIZED-FOR-ROLE";
 
     protected AuthFilter(AuthType authType, PrimerBundleConfiguration configuration, ObjectMapper objectMapper) {
         this.authType = authType;
@@ -63,12 +60,14 @@ public abstract class AuthFilter implements ContainerRequestFilter {
         final String tokenType = (String) webToken.claim().getParameter("type");
         switch (tokenType) {
             case "dynamic":
+                requestContext.getHeaders().putSingle(AUTHORIZATION_TOKEN_TYPE, "dynamic");
                 requestContext.getHeaders().putSingle(AUTHORIZED_FOR_ID, (String) webToken.claim().getParameter("user_id"));
                 requestContext.getHeaders().putSingle(AUTHORIZED_FOR_SUBJECT, webToken.claim().subject());
                 requestContext.getHeaders().putSingle(AUTHORIZED_FOR_NAME, (String) webToken.claim().getParameter("name"));
                 requestContext.getHeaders().putSingle(AUTHORIZED_FOR_ROLE, (String) webToken.claim().getParameter("role"));
                 break;
             case "static":
+                requestContext.getHeaders().putSingle(AUTHORIZATION_TOKEN_TYPE, "static");
                 requestContext.getHeaders().putSingle(AUTHORIZED_FOR_SUBJECT, webToken.claim().subject());
                 requestContext.getHeaders().putSingle(AUTHORIZED_FOR_ROLE, (String) webToken.claim().getParameter("role"));
                 break;
@@ -135,7 +134,7 @@ public abstract class AuthFilter implements ContainerRequestFilter {
     }
 
     protected void handleError(Response.Status status, String errorCode, String message, String token, boolean recoverable,
-                             ContainerRequestContext requestContext) throws JsonProcessingException {
+                               ContainerRequestContext requestContext) throws JsonProcessingException {
         switch (status) {
             case NOT_FOUND:
             case UNAUTHORIZED:
